@@ -441,9 +441,9 @@ struct serializer
 
   private:
 
-    std::string serialize_key(const toml::key& key) const
+    std::string serialize_key(const toml::key& key_value) const
     {
-        return ::toml::format_key(key);
+        return ::toml::format_key(key_value);
     }
 
     std::string serialize_dotted_key(const std::vector<toml::key>& keys) const

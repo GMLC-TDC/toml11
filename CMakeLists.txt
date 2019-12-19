@@ -1,17 +1,21 @@
 cmake_minimum_required(VERSION 2.8)
 enable_testing()
-if("${CMAKE_VERSION}" VERSION_GREATER 3.1)
-    project(toml11 VERSION 3.2.0)
-else()
-   project(toml11)
 
-    set(toml11_VERSION_MAYOR  3)
-    set(toml11_VERSION_MINOR  2)
-    set(toml11_VERSION_PATCH  0)
-    set(toml11_VERSION
-        "${toml11_VERSION_MAYOR}.${toml11_VERSION_MINOR}.${toml11_VERSION_PATCH}"
-    )
+if(POLICY CMP0048)
+    # Policy CMP0048 The project() command manages VERSION variables.
+    cmake_policy(SET CMP0048 OLD)
 endif()
+
+project(toml11)
+
+set(toml11_VERSION_MAYOR  3)
+set(toml11_VERSION_MINOR  2)
+set(toml11_VERSION_PATCH  0)
+set(toml11_VERSION
+  "${toml11_VERSION_MAYOR}.${toml11_VERSION_MINOR}.${toml11_VERSION_PATCH}"
+)
+
+
 
 option(toml11_BUILD_TEST "Build toml tests" ON)
 
