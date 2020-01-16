@@ -256,7 +256,7 @@ std::string read_utf8_codepoint(const region<Container>& reg,
     std::istringstream iss(str);
     iss >> std::hex >> codepoint;
 
-    const auto to_char = [](const int i) noexcept -> char {
+    const auto to_char = [](const std::uint_least32_t i) noexcept -> char {
         const auto uc = static_cast<unsigned char>(i);
         return *reinterpret_cast<const char*>(std::addressof(uc));
     };
@@ -792,13 +792,13 @@ parse_offset_datetime(location<Container>& loc)
             const auto str = ofs.unwrap().str();
             if(str.front() == '+')
             {
-                offset.hour   = static_cast<std::int8_t>(from_string<int>(str.substr(1,2), 0));
-                offset.minute = static_cast<std::int8_t>(from_string<int>(str.substr(4,2), 0));
+                offset = time_offset(from_string<int>(str.substr(1,2), 0),
+                                     from_string<int>(str.substr(4,2), 0));
             }
             else
             {
-                offset.hour   = -static_cast<std::int8_t>(from_string<int>(str.substr(1,2), 0));
-                offset.minute = -static_cast<std::int8_t>(from_string<int>(str.substr(4,2), 0));
+                offset = time_offset(-from_string<int>(str.substr(1,2), 0),
+                                     -from_string<int>(str.substr(4,2), 0));
             }
         }
         else if(*inner_loc.iter() != 'Z' && *inner_loc.iter() != 'z')
@@ -1331,7 +1331,7 @@ insert_nested_key(typename Value::table_type& root, const Value& v,
             tab->insert(std::make_pair(k, v));
             return ok(true);
         }
-        else
+        else // k is not the last one, we should insert recursively
         {
             // if there is no corresponding value, insert it first.
             // related: you don't need to write
@@ -1347,6 +1347,27 @@ insert_nested_key(typename Value::table_type& root, const Value& v,
             // type checking...
             if(tab->at(k).is_table())
             {
+                // According to toml-lang/toml:36d3091b3 "Clarify that inline
+                // tables are immutable", check if it adds key-value pair to an
+                // inline table.
+                //   This is one of the unreleased (after-0.5.0) toml feature.
+                // But this is marked as "Clarify", so TOML-lang intended that
+                // inline tables are immutable in all version.
+                {
+                    // here, if the value is a (multi-line) table, the region
+                    // should be something like `[table-name]`.
+                    if(get_region(tab->at(k)).front() == '{')
+                    {
+                        throw syntax_error(format_underline(concat_to_string(
+                            "toml::insert_value: inserting to an inline table (",
+                            format_dotted_keys(first, std::next(iter)),
+                            ") but inline tables are immutable"), {
+                                {std::addressof(get_region(tab->at(k))),
+                                 "inline tables are immutable"},
+                                {std::addressof(get_region(v)), "inserting this"}
+                            }), v.location());
+                    }
+                }
                 tab = std::addressof((*tab)[k].as_table());
             }
             else if(tab->at(k).is_array()) // inserting to array-of-tables?

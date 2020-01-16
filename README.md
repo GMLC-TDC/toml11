@@ -274,10 +274,31 @@ const auto color = toml::find<std::string>(data, "fruit", "physical", "color");
 const auto shape = toml::find<std::string>(data, "fruit", "physical", "shape");
 ```
 
+### Finding a value in an array
+
+You can find n-th value in an array by `toml::find`.
+
+```toml
+values = ["foo", "bar", "baz"]
+```
+
+``` cpp
+const auto data   = toml::parse("sample.toml");
+const auto values = toml::find(data, "values");
+const auto bar    = toml::find<std::string>(values, 1);
+```
+
+`toml::find` can also search array recursively.
+
+```cpp
+const auto data = toml::parse("fruit.toml");
+const auto bar  = toml::find<std::string>(data, "values", 1);
+```
+
 ### In case of error
 
-If the value does not exist, `toml::find` throws an error with the location of
-the table.
+If the value does not exist, `toml::find` throws `std::out_of_range` with the
+location of the table.
 
 ```console
 terminate called after throwing an instance of 'std::out_of_range'
@@ -286,11 +307,6 @@ terminate called after throwing an instance of 'std::out_of_range'
  6 | [tab]
    | ~~~~~ in this table
 ```
-
-**Note**: It is recommended to find a table as `toml::value` because it has much information
-compared to `toml::table`, which is an alias of
-`std::unordered_map<std::string, toml::value>`. Since `toml::table` does not have
-any information about toml file, such as where the table was defined in the file.
 
 ----
 
@@ -1093,7 +1109,7 @@ const auto data = toml::parse("example.toml");
 const foo f = toml::find<ext::foo>(data, "foo");
 ```
 
-There are 2 ways to use `toml::get` with the types that you defined.
+There are 3 ways to use `toml::get` with the types that you defined.
 
 The first one is to implement `from_toml(const toml::value&)` member function.
 
@@ -1120,7 +1136,31 @@ struct foo
 In this way, because `toml::get` first constructs `foo` without arguments,
 the type should be default-constructible.
 
-The second is to implement specialization of `toml::from` for your type.
+The second is to implement `constructor(const toml::value&)`.
+
+```cpp
+namespace ext
+{
+struct foo
+{
+    explicit foo(const toml::value& v)
+        : a(toml::find<int>(v, "a")), b(toml::find<double>(v, "b")),
+          c(toml::find<std::string>(v, "c"))
+    {}
+
+    int         a;
+    double      b;
+    std::string c;
+};
+} // ext
+```
+
+Note that implicit default constructor declaration will be suppressed
+when a constructor is defined. If you want to use the struct (here, `foo`)
+in a container (e.g. `std::vector<foo>`), you may need to define default
+constructor explicitly.
+
+The third is to implement specialization of `toml::from` for your type.
 
 ```cpp
 namespace ext

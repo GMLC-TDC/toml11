@@ -259,6 +259,15 @@ template<typename T, typename C,
          std::size_t S = sizeof(::toml::from<T>)>
 T get(const basic_value<C, M, V>&);
 
+// T(const toml::value&) and T is not toml::basic_value
+template<typename T, typename C,
+         template<typename ...> class M, template<typename ...> class V>
+detail::enable_if_t<detail::conjunction<
+    detail::negation<detail::is_basic_value<T>>,
+    std::is_constructible<T, const basic_value<C, M, V>&>
+    >::value, T>
+get(const basic_value<C, M, V>&);
+
 // ============================================================================
 // array-like types; most likely STL container, like std::vector, etc.
 
@@ -417,6 +426,17 @@ T get(const basic_value<C, M, V>& v)
     return ::toml::from<T>::from_toml(v);
 }
 
+template<typename T, typename C,
+         template<typename ...> class M, template<typename ...> class V>
+detail::enable_if_t<detail::conjunction<
+    detail::negation<detail::is_basic_value<T>>,
+    std::is_constructible<T, const basic_value<C, M, V>&>
+    >::value, T>
+get(const basic_value<C, M, V>& v)
+{
+    return T(v);
+}
+
 // ============================================================================
 // find
 
@@ -463,6 +483,52 @@ basic_value<C, M, V> find(basic_value<C, M, V>&& v, const key& ky)
             }));
     }
     return basic_value<C, M, V>(std::move(tab.at(ky)));
+}
+
+// ----------------------------------------------------------------------------
+// find(value, idx)
+template<typename C,
+         template<typename ...> class M, template<typename ...> class V>
+basic_value<C, M, V> const&
+find(const basic_value<C, M, V>& v, const std::size_t idx)
+{
+    const auto& ary = v.as_array();
+    if(ary.size() <= idx)
+    {
+        throw std::out_of_range(detail::format_underline(concat_to_string(
+            "index ", idx, " is out of range"), {
+                {std::addressof(detail::get_region(v)), "in this array"}
+            }));
+    }
+    return ary.at(idx);
+}
+template<typename C,
+         template<typename ...> class M, template<typename ...> class V>
+basic_value<C, M, V>& find(basic_value<C, M, V>& v, const std::size_t idx)
+{
+    auto& ary = v.as_array();
+    if(ary.size() <= idx)
+    {
+        throw std::out_of_range(detail::format_underline(concat_to_string(
+            "index ", idx, " is out of range"), {
+                {std::addressof(detail::get_region(v)), "in this array"}
+            }));
+    }
+    return ary.at(idx);
+}
+template<typename C,
+         template<typename ...> class M, template<typename ...> class V>
+basic_value<C, M, V> find(basic_value<C, M, V>&& v, const std::size_t idx)
+{
+    auto& ary = v.as_array();
+    if(ary.size() <= idx)
+    {
+        throw std::out_of_range(detail::format_underline(concat_to_string(
+            "index ", idx, " is out of range"), {
+                {std::addressof(detail::get_region(v)), "in this array"}
+            }));
+    }
+    return basic_value<C, M, V>(std::move(ary.at(idx)));
 }
 
 // ----------------------------------------------------------------------------
@@ -516,57 +582,152 @@ find(basic_value<C, M, V>&& v, const key& ky)
     return ::toml::get<T>(std::move(tab.at(ky)));
 }
 
+// ----------------------------------------------------------------------------
+// find<T>(value, idx)
+template<typename T, typename C,
+         template<typename ...> class M, template<typename ...> class V>
+decltype(::toml::get<T>(std::declval<basic_value<C, M, V> const&>()))
+find(const basic_value<C, M, V>& v, const std::size_t idx)
+{
+    const auto& ary = v.as_array();
+    if(ary.size() <= idx)
+    {
+        throw std::out_of_range(detail::format_underline(concat_to_string(
+            "index ", idx, " is out of range"), {
+                {std::addressof(detail::get_region(v)), "in this array"}
+            }));
+    }
+    return ::toml::get<T>(ary.at(idx));
+}
+template<typename T, typename C,
+         template<typename ...> class M, template<typename ...> class V>
+decltype(::toml::get<T>(std::declval<basic_value<C, M, V>&>()))
+find(basic_value<C, M, V>& v, const std::size_t idx)
+{
+    auto& ary = v.as_array();
+    if(ary.size() <= idx)
+    {
+        throw std::out_of_range(detail::format_underline(concat_to_string(
+            "index ", idx, " is out of range"), {
+                {std::addressof(detail::get_region(v)), "in this array"}
+            }));
+    }
+    return ::toml::get<T>(ary.at(idx));
+}
+template<typename T, typename C,
+         template<typename ...> class M, template<typename ...> class V>
+decltype(::toml::get<T>(std::declval<basic_value<C, M, V>&&>()))
+find(basic_value<C, M, V>&& v, const std::size_t idx)
+{
+    typename basic_value<C, M, V>::array_type ary = std::move(v).as_array();
+    if(ary.size() <= idx)
+    {
+        throw std::out_of_range(detail::format_underline(concat_to_string(
+            "index ", idx, " is out of range"), {
+                {std::addressof(detail::get_region(v)), "in this array"}
+            }));
+    }
+    return ::toml::get<T>(std::move(ary.at(idx)));
+}
+
 // --------------------------------------------------------------------------
 // toml::find(toml::value, toml::key, Ts&& ... keys)
 
+namespace detail
+{
+// It suppresses warnings by -Wsign-conversion. Let's say we have the following
+// code.
+// ```cpp
+// const auto x = toml::find<std::string>(data, "array", 0);
+// ```
+// Here, the type of literal number `0` is `int`. `int` is a signed integer.
+// `toml::find` takes `std::size_t` as an index. So it causes implicit sign
+// conversion and `-Wsign-conversion` warns about it. Using `0u` instead of `0`
+// suppresses the warning, but it makes user code messy.
+//     To suppress this warning, we need to be aware of type conversion caused
+// by `toml::find(v, key1, key2, ... keys)`. But the thing is that the types of
+// keys can be any combination of {string-like, size_t-like}. Of course we can't
+// write down all the combinations. Thus we need to use some function that
+// recognize the type of argument and cast it into `std::string` or
+// `std::size_t` depending on the context.
+//     `key_cast` does the job. It has 2 overloads. One is invoked when the
+// argument type is an integer and cast the argument into `std::size_t`. The
+// other is invoked when the argument type is not an integer, possibly one of
+// std::string, const char[N] or const char*, and construct std::string from
+// the argument.
+//     `toml::find(v, k1, k2, ... ks)` uses `key_cast` before passing `ks` to
+// `toml::find(v, k)` to suppress -Wsign-conversion.
+
+template<typename T>
+enable_if_t<conjunction<std::is_integral<remove_cvref_t<T>>,
+            negation<std::is_same<remove_cvref_t<T>, bool>>>::value, std::size_t>
+key_cast(T&& v) noexcept
+{
+    return std::size_t(v);
+}
+template<typename T>
+enable_if_t<negation<conjunction<std::is_integral<remove_cvref_t<T>>,
+            negation<std::is_same<remove_cvref_t<T>, bool>>>>::value, std::string>
+key_cast(T&& v) noexcept
+{
+    return std::string(std::forward<T>(v));
+}
+} // detail
+
 template<typename C,
          template<typename ...> class M, template<typename ...> class V,
-         typename ... Ts>
+         typename Key1, typename Key2, typename ... Keys>
 const basic_value<C, M, V>&
-find(const basic_value<C, M, V>& v, const ::toml::key& ky, Ts&& ... keys)
+find(const basic_value<C, M, V>& v, Key1&& k1, Key2&& k2, Keys&& ... keys)
 {
-    return ::toml::find(::toml::find(v, ky), std::forward<Ts>(keys)...);
+    return ::toml::find(::toml::find(v, detail::key_cast(k1)),
+            detail::key_cast(k2), std::forward<Keys>(keys)...);
 }
 template<typename C,
          template<typename ...> class M, template<typename ...> class V,
-         typename ... Ts>
+         typename Key1, typename Key2, typename ... Keys>
 basic_value<C, M, V>&
-find(basic_value<C, M, V>& v, const ::toml::key& ky, Ts&& ... keys)
+find(basic_value<C, M, V>& v, Key1&& k1, Key2&& k2, Keys&& ... keys)
 {
-    return ::toml::find(::toml::find(v, ky), std::forward<Ts>(keys)...);
+    return ::toml::find(::toml::find(v, detail::key_cast(k1)),
+            detail::key_cast(k2), std::forward<Keys>(keys)...);
 }
 template<typename C,
          template<typename ...> class M, template<typename ...> class V,
-         typename ... Ts>
+         typename Key1, typename Key2, typename ... Keys>
 basic_value<C, M, V>
-find(basic_value<C, M, V>&& v, const ::toml::key& ky, Ts&& ... keys)
+find(basic_value<C, M, V>&& v, Key1&& k1, Key2&& k2, Keys&& ... keys)
 {
-    return ::toml::find(::toml::find(std::move(v), ky), std::forward<Ts>(keys)...);
+    return ::toml::find(::toml::find(std::move(v), std::forward<Key1>(k1)),
+            detail::key_cast(k2), std::forward<Keys>(keys)...);
 }
 
 template<typename T, typename C,
          template<typename ...> class M, template<typename ...> class V,
-         typename ... Ts>
+         typename Key1, typename Key2, typename ... Keys>
 decltype(::toml::get<T>(std::declval<const basic_value<C, M, V>&>()))
-find(const basic_value<C, M, V>& v, const ::toml::key& ky, Ts&& ... keys)
+find(const basic_value<C, M, V>& v, Key1&& k1, Key2&& k2, Keys&& ... keys)
 {
-    return ::toml::find<T>(::toml::find(v, ky), std::forward<Ts>(keys)...);
+    return ::toml::find<T>(::toml::find(v, detail::key_cast(k1)),
+            detail::key_cast(k2), std::forward<Keys>(keys)...);
 }
 template<typename T, typename C,
          template<typename ...> class M, template<typename ...> class V,
-         typename ... Ts>
+         typename Key1, typename Key2, typename ... Keys>
 decltype(::toml::get<T>(std::declval<basic_value<C, M, V>&>()))
-find(basic_value<C, M, V>& v, const ::toml::key& ky, Ts&& ... keys)
+find(basic_value<C, M, V>& v, Key1&& k1, Key2&& k2, Keys&& ... keys)
 {
-    return ::toml::find<T>(::toml::find(v, ky), std::forward<Ts>(keys)...);
+    return ::toml::find<T>(::toml::find(v, detail::key_cast(k1)),
+            detail::key_cast(k2), std::forward<Keys>(keys)...);
 }
 template<typename T, typename C,
          template<typename ...> class M, template<typename ...> class V,
-         typename ... Ts>
+         typename Key1, typename Key2, typename ... Keys>
 decltype(::toml::get<T>(std::declval<basic_value<C, M, V>&&>()))
-find(basic_value<C, M, V>&& v, const ::toml::key& ky, Ts&& ... keys)
+find(basic_value<C, M, V>&& v, Key1&& k1, Key2&& k2, Keys&& ... keys)
 {
-    return ::toml::find<T>(::toml::find(std::move(v), ky), std::forward<Ts>(keys)...);
+    return ::toml::find<T>(::toml::find(std::move(v), detail::key_cast(k1)),
+            detail::key_cast(k2), std::forward<Keys>(keys)...);
 }
 
 // ============================================================================
