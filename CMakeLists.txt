@@ -1,19 +1,20 @@
 cmake_minimum_required(VERSION 2.8)
 enable_testing()
 
-if(POLICY CMP0048)
-    # Policy CMP0048 The project() command manages VERSION variables.
-    cmake_policy(SET CMP0048 OLD)
-endif()
+if (CMAKE_VERSION VERSION_GREATER 3.0.0)
+   cmake_policy(VERSION 3.0.0)
+   project(toml11 VERSION 3.2.1)
+   set(toml11_VERSION_MAYOR  ${toml11_VERSION_MAJOR})
+else()
+   project(toml11)
 
-project(toml11)
-
-set(toml11_VERSION_MAYOR  3)
-set(toml11_VERSION_MINOR  2)
-set(toml11_VERSION_PATCH  1)
-set(toml11_VERSION
-  "${toml11_VERSION_MAYOR}.${toml11_VERSION_MINOR}.${toml11_VERSION_PATCH}"
+   set(toml11_VERSION_MAYOR  3)
+   set(toml11_VERSION_MINOR  2)
+   set(toml11_VERSION_PATCH  1)
+   set(toml11_VERSION
+     "${toml11_VERSION_MAYOR}.${toml11_VERSION_MINOR}.${toml11_VERSION_PATCH}"
 )
+endif()
 
 
 
@@ -22,7 +23,7 @@ option(toml11_TEST_WITH_ASAN  "use LLVM address sanitizer" OFF)
 option(toml11_TEST_WITH_UBSAN "use LLVM undefined behavior sanitizer" OFF)
 
 include(CheckCXXCompilerFlag)
-if("${CMAKE_VERSION}" VERSION_GREATER 3.1)
+if(CMAKE_VERSION VERSION_GREATER 3.1)
     set(CMAKE_CXX_EXTENSIONS OFF)
     if(NOT DEFINED CMAKE_CXX_STANDARD)
         set(CMAKE_CXX_STANDARD 11)
