@@ -24,10 +24,10 @@ namespace toml
 // a `"` and escaping some special character is boring.
 template<typename charT, typename traits, typename Alloc>
 std::basic_string<charT, traits, Alloc>
-format_key(const std::basic_string<charT, traits, Alloc>& key)
+format_key(const std::basic_string<charT, traits, Alloc>& key_value)
 {
     // check the key can be a bare (unquoted) key
-    detail::location<toml::key> loc(key, key);
+    detail::location<toml::key> loc(key_value, key_value);
     detail::lex_unquoted_key::invoke(loc);
     if(loc.iter() == loc.end())
     {

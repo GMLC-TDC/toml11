@@ -146,6 +146,8 @@ if(MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd5031")
 	# pragma warning(pop): spectre warnings in tests
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd5045")
+	# pragma warning(pop): spectre warnings in tests
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4265")
 endif()
 
 find_package(Boost COMPONENTS unit_test_framework REQUIRED)
@@ -155,7 +157,7 @@ add_definitions(-DUNITTEST_FRAMEWORK_LIBRARY_EXIST)
 foreach(TEST_NAME ${TEST_NAMES})
     add_executable(${TEST_NAME} ${TEST_NAME}.cpp)
     target_link_libraries(${TEST_NAME} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} toml11::toml11)
-    target_include_directories(${TEST_NAME} PRIVATE ${Boost_INCLUDE_DIRS})
+    target_include_directories(${TEST_NAME} SYSTEM PRIVATE ${Boost_INCLUDE_DIRS})
 
     if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         if(toml11_TEST_WITH_ASAN)
