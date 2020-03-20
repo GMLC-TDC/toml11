@@ -1,15 +1,15 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.1)
 enable_testing()
 
 if (CMAKE_VERSION VERSION_GREATER 3.0.0)
    cmake_policy(VERSION 3.0.0)
-   project(toml11 VERSION 3.2.1)
+   project(toml11 VERSION 3.3.1)
    set(toml11_VERSION_MAYOR  ${toml11_VERSION_MAJOR})
 else()
    project(toml11)
 
    set(toml11_VERSION_MAYOR  3)
-   set(toml11_VERSION_MINOR  2)
+   set(toml11_VERSION_MINOR  3)
    set(toml11_VERSION_PATCH  1)
    set(toml11_VERSION
      "${toml11_VERSION_MAYOR}.${toml11_VERSION_MINOR}.${toml11_VERSION_PATCH}"
@@ -24,11 +24,9 @@ option(toml11_TEST_WITH_UBSAN "use LLVM undefined behavior sanitizer" OFF)
 
 include(CheckCXXCompilerFlag)
 if(CMAKE_VERSION VERSION_GREATER 3.1)
-    set(CMAKE_CXX_EXTENSIONS OFF)
-    if(NOT DEFINED CMAKE_CXX_STANDARD)
-        set(CMAKE_CXX_STANDARD 11)
-    endif()
-    set(CXX_STANDARD_REQUIRED ON)
+    set(CMAKE_CXX_STANDARD 11 CACHE STRING "The C++ standard whose features are requested to build all targets.")
+    set(CMAKE_CXX_STANDARD_REQUIRED ON CACHE BOOL "Boolean describing whether the value of CXX_STANDARD is a requirement.")
+    set(CMAKE_CXX_EXTENSIONS OFF CACHE BOOL "Boolean specifying whether compiler specific extensions are requested.")
 else()
     # Manually check for C++11 compiler flag.
     CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)

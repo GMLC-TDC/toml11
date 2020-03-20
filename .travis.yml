@@ -5,6 +5,30 @@ matrix:
   - os: linux
     language: cpp
     compiler: gcc
+    env: COMPILER="g++-4.8" CXX_STANDARD=11
+    addons:
+      apt:
+        sources:
+        - sourceline: 'ppa:ubuntu-toolchain-r/test'
+        - sourceline: 'ppa:mhier/libboost-latest'
+        packages:
+        - g++-4.8
+        - boost1.70
+  - os: linux
+    language: cpp
+    compiler: gcc
+    env: COMPILER="g++-4.9" CXX_STANDARD=11
+    addons:
+      apt:
+        sources:
+        - sourceline: 'ppa:ubuntu-toolchain-r/test'
+        - sourceline: 'ppa:mhier/libboost-latest'
+        packages:
+        - g++-4.9
+        - boost1.70
+  - os: linux
+    language: cpp
+    compiler: gcc
     env: COMPILER="g++-5" CXX_STANDARD=11
     addons:
       apt:
@@ -54,6 +78,18 @@ matrix:
     language: cpp
     compiler: gcc
     env: COMPILER="g++-8" CXX_STANDARD=11 TOML_HEAD=ON
+    addons:
+      apt:
+        sources:
+        - sourceline: 'ppa:ubuntu-toolchain-r/test'
+        - sourceline: 'ppa:mhier/libboost-latest'
+        packages:
+        - g++-8
+        - boost1.70
+  - os: linux
+    language: cpp
+    compiler: gcc
+    env: COMPILER="g++-8" CXX_STANDARD=14
     addons:
       apt:
         sources:
@@ -187,6 +223,20 @@ matrix:
   - os: linux
     language: cpp
     compiler: clang
+    env: COMPILER="clang++-8" CXX_STANDARD=14
+    addons:
+      apt:
+        sources:
+        - sourceline: 'ppa:ubuntu-toolchain-r/test'
+        - sourceline: 'ppa:mhier/libboost-latest'
+        - llvm-toolchain-trusty-8
+        packages:
+        - clang-8
+        - g++-8
+        - boost1.70
+  - os: linux
+    language: cpp
+    compiler: clang
     env: COMPILER="clang++-8" CXX_STANDARD=17
     addons:
       apt:
@@ -280,7 +330,6 @@ script:
 - cmake --version
 - mkdir build
 - cd build
-- git clone https://github.com/toml-lang/toml.git
 - cmake -DCMAKE_CXX_COMPILER=$COMPILER -DCMAKE_CXX_STANDARD=$CXX_STANDARD -DTOML11_USE_UNRELEASED_TOML_FEATURES=${TOML_HEAD} -Dtoml11_TEST_WITH_ASAN=${WITH_ASAN} -Dtoml11_TEST_WITH_UBSAN=${WITH_UBSAN} ..
 - make
 - ctest --output-on-failure

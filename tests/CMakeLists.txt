@@ -1,3 +1,12 @@
+include(ExternalProject)
+ExternalProject_Add(toml
+        SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/toml
+        GIT_REPOSITORY https://github.com/toml-lang/toml
+        GIT_TAG v0.5.0
+        CONFIGURE_COMMAND ""
+        BUILD_COMMAND ""
+        INSTALL_COMMAND "")
+
 set(TEST_NAMES
     test_datetime
     test_string
@@ -48,6 +57,8 @@ CHECK_CXX_COMPILER_FLAG("-Wduplicated-branches" COMPILER_SUPPORTS_WDUPLICATED_BR
 CHECK_CXX_COMPILER_FLAG("-Wlogical-op"          COMPILER_SUPPORTS_WLOGICAL_OP)
 CHECK_CXX_COMPILER_FLAG("-Wuseless-cast"        COMPILER_SUPPORTS_WUSELESS_CAST)
 CHECK_CXX_COMPILER_FLAG("-Wdouble-promotion"    COMPILER_SUPPORTS_WDOUBLE_PROMOTION)
+CHECK_CXX_COMPILER_FLAG("-Wrange-loop-analysis" COMPILER_SUPPORTS_WRANGE_LOOP_ANALYSIS)
+CHECK_CXX_COMPILER_FLAG("-Wundef"               COMPILER_SUPPORTS_WUNDEF)
 
 if(COMPILER_SUPPORTS_WALL)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
@@ -81,6 +92,12 @@ if(COMPILER_SUPPORTS_WUSELESS_CAST)
 endif()
 if(COMPILER_SUPPORTS_WDOUBLE_PROMOTION)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wdouble-promotion")
+endif()
+if(COMPILER_SUPPORTS_WRANGE_LOOP_ANALYSIS)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wrange-loop-analysis")
+endif()
+if(COMPILER_SUPPORTS_WUNDEF)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wundef")
 endif()
 
 option(TOML11_USE_UNRELEASED_TOML_FEATURES
@@ -152,7 +169,7 @@ foreach(TEST_NAME ${TEST_NAMES})
         endif()
     endif()
 
-    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME} WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
+    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
     # Set the PATH to be able to find Boost DLL
     if(WIN32)
